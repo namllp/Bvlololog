@@ -1,0 +1,1265 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BV Log Analyzer - Part 11.4.1.1.1</title>
+<style>
+:root{
+  --bg:#0f172a;
+  --panel:#111827;
+  --panel2:#1f2937;
+  --line:#374151;
+  --text:#f8fafc;
+  --muted:#94a3b8;
+  --blue:#2563eb;
+  --green:#16a34a;
+  --red:#dc2626;
+  --yellow:#d97706;
+  --cyan:#0891b2;
+  --purple:#7c3aed;
+  --orange:#ea580c;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:linear-gradient(135deg,#020617,#0f172a 55%,#111827);
+  color:var(--text);
+  font:14px "Segoe UI",Arial,sans-serif;
+}
+header{
+  padding:16px 22px;
+  background:linear-gradient(90deg,#1d4ed8,#0f766e,#7c3aed);
+  box-shadow:0 2px 18px #0008;
+}
+header h1{margin:0;font-size:24px}
+header small{color:#dbeafe}
+.wrap{padding:18px;max-width:1800px;margin:auto}
+.panel{
+  background:rgba(31,41,55,.96);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:16px;
+  margin-bottom:16px;
+  box-shadow:0 8px 22px #0007;
+}
+.row{display:flex;gap:12px;align-items:end;flex-wrap:wrap}
+label{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:12px}
+input,select{
+  background:#020617;
+  border:1px solid #475569;
+  color:#fff;
+  border-radius:8px;
+  padding:9px 10px;
+  min-width:140px;
+}
+input[type=file]{min-width:330px}
+button{
+  border:none;
+  border-radius:8px;
+  padding:10px 16px;
+  cursor:pointer;
+  color:white;
+  font-weight:700;
+  background:var(--blue);
+}
+button:hover{filter:brightness(1.12)}
+button:disabled{background:#475569;cursor:not-allowed}
+.btn-green{background:var(--green)}
+.btn-cyan{background:var(--cyan)}
+.btn-purple{background:var(--purple)}
+.note{color:var(--muted);font-size:12px;margin:10px 0 0}
+.cards{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(155px,1fr));
+  gap:12px;
+  margin:12px 0;
+}
+.card{
+  background:#020617;
+  border:1px solid #334155;
+  border-radius:13px;
+  padding:13px;
+}
+.card span{color:#cbd5e1;font-size:12px}
+.card b{font-size:25px;display:block;margin-top:5px}
+.card.total{border-left:5px solid var(--blue)}
+.card.accept{border-left:5px solid var(--green)}
+.card.reject{border-left:5px solid var(--red)}
+.card.unknown{border-left:5px solid var(--yellow)}
+.card.predict{border-left:5px solid var(--purple)}
+.card.amount{border-left:5px solid var(--cyan)}
+.card.extra{border-left:5px solid var(--orange)}
+.block-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  margin-bottom:10px;
+}
+.block-head h2{margin:0;font-size:18px}
+.badge{
+  display:inline-block;
+  padding:4px 9px;
+  border-radius:999px;
+  font-weight:800;
+  font-size:12px;
+}
+.badge.ACCEPT{background:#064e3b;color:#bbf7d0}
+.badge.REJECT{background:#7f1d1d;color:#fecaca}
+.badge.UNKNOWN{background:#78350f;color:#fde68a}
+.badge.PREDICT{background:#4c1d95;color:#ddd6fe}
+.badge.info{background:#1e3a8a;color:#dbeafe}
+.filterbar{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:end;
+  margin-top:10px;
+}
+.table-wrap{
+  max-height:500px;
+  overflow:auto;
+  border:1px solid #374151;
+  border-radius:10px;
+}
+table{width:100%;border-collapse:separate;border-spacing:0}
+th,td{
+  border-bottom:1px solid #374151;
+  border-right:1px solid #374151;
+  padding:7px 8px;
+  text-align:center;
+  white-space:nowrap;
+}
+th{
+  position:sticky;
+  top:0;
+  z-index:2;
+  background:#374151;
+  color:#f9fafb;
+  cursor:pointer;
+  user-select:none;
+}
+tr.accept-row{background:rgba(22,163,74,.12)}
+tr.reject-row{background:rgba(220,38,38,.16)}
+tr.unknown-row{background:rgba(217,119,6,.18)}
+tr.predict-row{background:rgba(124,58,237,.18)}
+tr.hidden{display:none}
+tr:hover{outline:2px solid #60a5fa55}
+.denom-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(175px,1fr));
+  gap:10px;
+  margin-top:10px;
+}
+.denom-box{
+  background:#020617;
+  border:1px solid #334155;
+  border-radius:10px;
+  padding:10px;
+}
+.denom-box h3{margin:0 0 8px;font-size:15px}
+.denom-line{
+  display:flex;
+  justify-content:space-between;
+  border-top:1px solid #ffffff14;
+  padding:5px 0;
+}
+.good{color:#86efac}
+.bad{color:#fca5a5}
+.warn{color:#fde68a}
+.pred{color:#c4b5fd}
+.money{color:#67e8f9}
+pre{
+  background:#020617;
+  color:#cbd5e1;
+  padding:10px;
+  min-height:120px;
+  max-height:180px;
+  overflow:auto;
+  border-radius:10px;
+  border:1px solid #334155;
+}
+.footer{color:#94a3b8;font-size:12px}
+
+#backToTop{
+  position:fixed;
+  right:18px;
+  bottom:22px;
+  z-index:9999;
+  width:48px;
+  height:48px;
+  border:none;
+  border-radius:50%;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  background:linear-gradient(135deg,#2563eb,#7c3aed);
+  color:#fff;
+  font-size:22px;
+  font-weight:900;
+  cursor:pointer;
+  box-shadow:0 8px 24px #0009;
+  opacity:.94;
+}
+#backToTop:hover{filter:brightness(1.15);transform:translateY(-1px)}
+#backToTop.show{display:flex}
+
+</style>
+</head>
+<body>
+<header>
+  <h1>BV Log Analyzer - Part 11.4.1.1.1</h1>
+  <small>Offline HTML • result.bin • result.csv • Summary • PredictDenom • RejectLevel2</small>
+</header>
+
+<div class="wrap">
+  <div class="panel">
+    <div class="row">
+      <label>BV Log File
+        <input type="file" id="file">
+      </label>
+      <label>DateCode Hex (yymmddhhmm)
+        <input id="dateCode" value="2602271613" maxlength="10">
+      </label>
+      <label>Auto tăng phút
+        <select id="autoMinuteSearch">
+          <option value="off">Off - đúng DateCode</option>
+          <option value="on" selected>On - tìm phút gần nhất</option>
+        </select>
+      </label>
+      <label>Max phút tăng
+        <input id="maxMinuteForward" type="number" value="30" min="0" max="1440">
+      </label>
+      <label>Số block lấy
+        <input id="blockCount" type="number" value="3" min="1" max="50">
+      </label>
+      <button id="btnAnalyze">Extract & Analyze</button>
+    </div>
+    <div id="downloadLinks" style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap"></div>
+    <p class="note">
+      Rule: Denom chính hợp lệ 500000/200000/100000/50000 → Accept/Reject theo RejectLevel.
+      Denom chính không hợp lệ nhưng DenomConfirm hợp lệ → Predict. Còn lại → Unknown.
+      RejectLevel2 lấy từ byte 17. Reject theo các cặp RejectLevel/RejectLevel2 cố định hoặc theo kích thước: 500000 W 63-66/L 149-151; 200000 W 63-66/L 145-147; 100000 W 63-66/L 140-143; 50000 W 63-65/L 137-139. Chỉ cần Width hoặc Length ngoài dải là REJECT.
+    </p>
+  </div>
+
+  <div id="overall"></div>
+
+  <div class="panel">
+    <div class="block-head">
+      <h2>Filter Records</h2>
+      <span class="badge info" id="visibleCount">0 records</span>
+    </div>
+    <div class="filterbar">
+      <label>Search Serial / Denom / STT
+        <input id="filterText" placeholder="VD: YY657 / 500000 / 12">
+      </label>
+      <label>Status
+        <select id="filterStatus">
+          <option value="">All</option>
+          <option value="ACCEPT">ACCEPT</option>
+          <option value="REJECT">REJECT</option>
+          <option value="PREDICT">PREDICT</option>
+          <option value="UNKNOWN">UNKNOWN</option>
+        </select>
+      </label>
+      <label>Denom / PredictDenom
+        <select id="filterDenom">
+          <option value="">All</option>
+          <option value="500000">500000</option>
+          <option value="200000">200000</option>
+          <option value="100000">100000</option>
+          <option value="50000">50000</option>
+          <option value="Unknown">Unknown</option>
+        </select>
+      </label>
+      <button id="btnClear">Clear Filter</button>
+    </div>
+  </div>
+
+  <div class="panel" id="mergePanel" style="display:none">
+    <div class="block-head">
+      <h2>Merge Blocks</h2>
+      <span class="badge info">Gộp 1 hoặc nhiều block đã extract</span>
+    </div>
+    <div class="row">
+      <label>Chọn block cần gộp
+        <select id="mergeBlocks" multiple size="6" style="min-width:260px"></select>
+      </label>
+      <button id="btnMergeBlocks">Merge Selected Blocks</button>
+      <button id="btnDownloadMergedCsv" class="btn-green" disabled>Download merged.csv</button>
+      <button id="btnDownloadMergedBin" class="btn-cyan" disabled>Download merged.bin</button>
+      <button id="btnClearMerge">Clear Merge</button>
+    </div>
+    <div id="mergeResult" style="margin-top:14px"></div>
+  </div>
+
+  <div class="panel" id="comparePanel" style="display:none">
+    <div class="block-head">
+      <h2>Compare Blocks</h2>
+      <span class="badge info">Chọn nhiều block bằng Ctrl/Command hoặc kéo chọn</span>
+    </div>
+    <div class="row">
+      <label>Group A Blocks
+        <select id="compareA" multiple size="6" style="min-width:220px"></select>
+      </label>
+      <label>Group B Blocks
+        <select id="compareB" multiple size="6" style="min-width:220px"></select>
+      </label>
+      <button id="btnCompare">Compare</button>
+      <button id="btnClearCompare">Clear Compare</button>
+    </div>
+    <div id="compareResult" style="margin-top:14px"></div>
+  </div>
+
+  <div id="blocks"></div>
+
+  <div class="panel">
+    <b>Log</b>
+    <pre id="log"></pre>
+  </div>
+</div>
+<button id="backToTop" type="button" aria-label="Trở lên đầu trang" title="Trở lên đầu trang">↑</button>
+
+<script>
+const START_PATTERN=[0,0,0,0,0,0,0,0,15];
+const END_PATTERN=[0,0,0,0,0,0,0,0,95];
+
+const DENOM_MAP={
+  "3712":"500000",
+  "3711":"200000",
+  "3710":"100000",
+  "370F":"50000",
+  "370E":"20000"
+};
+
+const KNOWN_DENOMS=["500000","200000","100000","50000"];
+
+let csvData="";
+let jsonData=null;
+let resultBinBytes=null;
+let allRecords=[];
+let lastParsedBlocks=[];
+let lastRawBlocks=[];
+let mergedSelectionBytes=null;
+let mergedSelectionCsv="";
+
+function logLine(s){
+  document.getElementById("log").textContent += s + "\\n";
+}
+
+function hexToBytes(s){
+  s=(s||"").trim().replace(/\\s+/g,"").toUpperCase();
+  if(s.length!==10) throw new Error("DateCode phải đúng 10 ký tự hex");
+  const out=[];
+  for(let i=0;i<s.length;i+=2){
+    const v=parseInt(s.substr(i,2),16);
+    if(Number.isNaN(v)) throw new Error("DateCode có ký tự hex không hợp lệ");
+    out.push(v);
+  }
+  return out;
+}
+
+function findPattern(buf,pat,offset){
+  outer:
+  for(let i=offset;i<=buf.length-pat.length;i++){
+    for(let j=0;j<pat.length;j++){
+      if(buf[i+j]!==pat[j]) continue outer;
+    }
+    return i;
+  }
+  return -1;
+}
+
+function denomFromBytes(a,b){
+  const key=((a<<8)|b).toString(16).toUpperCase().padStart(4,"0");
+  return DENOM_MAP[key] || key;
+}
+
+function rawDenomHex(a,b){
+  return ((a<<8)|b).toString(16).toUpperCase().padStart(4,"0");
+}
+
+function decodeSerial(rec){
+  let s="";
+  for(let i=41;i<=59;i+=2){
+    if(rec[i]) s += String.fromCharCode(rec[i]);
+  }
+  return s;
+}
+
+function isKnownDenom(d){
+  return KNOWN_DENOMS.includes(d);
+}
+
+const REJECT_RULES = [
+  // 500000
+  {denom:"500000", r1:100, r2:36},
+  {denom:"500000", r1:5,   r2:197},
+  {denom:"500000", r1:80,  r2:255},
+  {denom:"500000", r1:162, r2:98},
+  {denom:"500000", r1:87,  r2:255},
+
+  // 200000
+  {denom:"200000", r1:101, r2:255},
+  {denom:"200000", r1:3,   r2:195},
+  {denom:"200000", r1:100, r2:36},
+  {denom:"200000", r1:142, r2:78},
+  {denom:"200000", r1:220, r2:255},
+
+  // 100000
+  {denom:"100000", r1:100, r2:36},
+  {denom:"100000", r1:19,  r2:211},
+  {denom:"100000", r1:151, r2:87},
+  {denom:"100000", r1:11,  r2:203},
+  {denom:"100000", r1:127, r2:255},
+  {denom:"100000", r1:5,   r2:197},
+  {denom:"100000", r1:81,  r2:255},
+
+  // 50000
+  {denom:"50000", r1:100, r2:36},
+  {denom:"50000", r1:53,  r2:245},
+  {denom:"50000", r1:81,  r2:255},
+  {denom:"50000", r1:55,  r2:247},
+  {denom:"50000", r1:5,   r2:197},
+  {denom:"50000", r1:3,   r2:195},
+  {denom:"50000", r1:7,   r2:199},
+  {denom:"50000", r1:59,  r2:251}
+];
+
+const DENOM_SIZE_RULES = {
+  "500000": { widths:[63,64,65,66],    lengths:[149,150,151] },
+  "200000": { widths:[63,64,65,66],    lengths:[145,146,147] },
+  "100000": { widths:[62,63,64,65,66], lengths:[140,141,142,143,144] },
+  "50000":  { widths:[62,63,64,65],    lengths:[137,138,139] }
+};
+
+function isRejectBySize(denom,width,length){
+  const rule = DENOM_SIZE_RULES[denom];
+  if(!rule) return false;
+  const widthOk = rule.widths.includes(Number(width));
+  const lengthOk = rule.lengths.includes(Number(length));
+  return !(widthOk && lengthOk);
+}
+
+function isRejectByRule(denom,rejectLevel,rejectLevel2){
+  const r1=Number(rejectLevel);
+  const r2=Number(rejectLevel2);
+  return REJECT_RULES.some(rule => rule.denom===denom && rule.r1===r1 && rule.r2===r2);
+}
+
+function money(n){
+  return Number(n||0).toLocaleString("en-US");
+}
+
+function makeCard(cls,label,value){
+  return `<div class="card ${cls}"><span>${label}</span><b>${value}</b></div>`;
+}
+
+function emptyStats(){
+  return {
+    total:0,
+    accept:0,
+    reject:0,
+    predict:0,
+    unknown:0,
+    acceptAmount:0,
+    rejectAmount:0,
+    predictAmount:0,
+    allAmount:0,
+    denom:{
+      "500000":{accept:0,reject:0,predict:0},
+      "200000":{accept:0,reject:0,predict:0},
+      "100000":{accept:0,reject:0,predict:0},
+      "50000":{accept:0,reject:0,predict:0}
+    }
+  };
+}
+
+function addStats(dst,src){
+  dst.total+=src.total;
+  dst.accept+=src.accept;
+  dst.reject+=src.reject;
+  dst.predict+=src.predict;
+  dst.unknown+=src.unknown;
+  dst.acceptAmount+=src.acceptAmount;
+  dst.rejectAmount+=src.rejectAmount;
+  dst.predictAmount+=src.predictAmount;
+  dst.allAmount+=src.allAmount;
+  for(const d of KNOWN_DENOMS){
+    dst.denom[d].accept+=src.denom[d].accept;
+    dst.denom[d].reject+=src.denom[d].reject;
+    dst.denom[d].predict+=src.denom[d].predict;
+  }
+}
+
+function parseBlock(block,blockIndex){
+  let dt="";
+  for(let i=12;i<=16;i++){
+    dt += block[i].toString(16).padStart(2,"0").toUpperCase();
+  }
+
+  const stats=emptyStats();
+  const records=[];
+
+  for(let off=64; off+63<block.length; off+=64){
+    let isEnd=true;
+    for(let i=0;i<8;i++){
+      if(block[off+i]!==0){isEnd=false;break;}
+    }
+    if(isEnd && block[off+8]===95) break;
+
+    const r=block.slice(off,off+64);
+    const stt=r[21];
+    if(!stt) continue;
+
+    const denomHex=rawDenomHex(r[10],r[11]);
+    const confirmHex=rawDenomHex(r[25],r[26]);
+    const denom=denomFromBytes(r[10],r[11]);
+    const confirm=denomFromBytes(r[25],r[26]);
+    const width=r[12];
+    const length=r[13];
+    const rejectLevel=r[15];
+    const rejectLevel2=r[17];
+    const thickness=r[18];
+    const serial=decodeSerial(r);
+
+    let status="UNKNOWN";
+    let predictDenom="Unknown";
+
+    if(isKnownDenom(denom)){
+      predictDenom=denom;
+      const rejectByLevel = isRejectByRule(denom,rejectLevel,rejectLevel2);
+      const rejectBySize = isRejectBySize(denom,width,length);
+      status = (rejectByLevel || rejectBySize) ? "REJECT" : "ACCEPT";
+    }else if(isKnownDenom(confirm)){
+      predictDenom=confirm;
+      status="PREDICT";
+    }
+
+    stats.total++;
+    if(status==="ACCEPT"){
+      stats.accept++;
+      stats.acceptAmount += Number(predictDenom);
+      stats.allAmount += Number(predictDenom);
+      stats.denom[predictDenom].accept++;
+    }else if(status==="REJECT"){
+      stats.reject++;
+      stats.rejectAmount += Number(predictDenom);
+      stats.allAmount += Number(predictDenom);
+      stats.denom[predictDenom].reject++;
+    }else if(status==="PREDICT"){
+      stats.predict++;
+      stats.predictAmount += Number(predictDenom);
+      stats.allAmount += Number(predictDenom);
+      stats.denom[predictDenom].predict++;
+    }else{
+      stats.unknown++;
+    }
+
+    const rec={
+      block:blockIndex,
+      dateTime:dt,
+      stt,
+      status,
+      denom,
+      denomHex,
+      confirm,
+      confirmHex,
+      predictDenom,
+      width,
+      length,
+      rejectLevel,
+      rejectLevel2,
+      rejectByLevel: isKnownDenom(denom) ? isRejectByRule(denom,rejectLevel,rejectLevel2) : false,
+      rejectBySize: isKnownDenom(denom) ? isRejectBySize(denom,width,length) : false,
+      thickness,
+      serial
+    };
+
+    records.push(rec);
+    allRecords.push(rec);
+  }
+
+  return {blockIndex,dt,records,stats};
+}
+
+function denomBoxes(stats){
+  let html="";
+  for(const d of KNOWN_DENOMS){
+    html += `<div class="denom-box">
+      <h3>${d}</h3>
+      <div class="denom-line"><span class="good">Accept</span><b>${stats.denom[d].accept}</b></div>
+      <div class="denom-line"><span class="bad">Reject</span><b>${stats.denom[d].reject}</b></div>
+      <div class="denom-line"><span class="pred">Predict</span><b>${stats.denom[d].predict}</b></div>
+    </div>`;
+  }
+  html += `<div class="denom-box">
+    <h3>Unknown</h3>
+    <div class="denom-line"><span class="warn">Count</span><b>${stats.unknown}</b></div>
+  </div>`;
+  return html;
+}
+
+function recordRow(r){
+  const cls = r.status==="ACCEPT" ? "accept-row" :
+              r.status==="REJECT" ? "reject-row" :
+              r.status==="PREDICT" ? "predict-row" : "unknown-row";
+  return `<tr class="${cls}" 
+    data-status="${r.status}" 
+    data-denom="${r.denom}" 
+    data-predict="${r.predictDenom}"
+    data-search="${String(r.stt).toLowerCase()} ${String(r.denom).toLowerCase()} ${String(r.confirm).toLowerCase()} ${String(r.predictDenom).toLowerCase()} ${String(r.serial).toLowerCase()}">
+      <td>${r.block}</td>
+      <td>${r.dateTime}</td>
+      <td>${r.stt}</td>
+      <td><span class="badge ${r.status}">${r.status}</span></td>
+      <td>${r.denom}</td>
+      <td>${r.confirm}</td>
+      <td>${r.predictDenom}</td>
+      <td>${r.width}</td>
+      <td>${r.length}</td>
+      <td>${r.rejectLevel}</td>
+      <td>${r.rejectLevel2}</td>
+      <td>${r.rejectByLevel ? 'YES' : ''}</td>
+      <td>${r.rejectBySize ? 'YES' : ''}</td>
+      <td>${r.thickness}</td>
+      <td>${r.serial}</td>
+    </tr>`;
+}
+
+function csvForBlock(p){
+  let csv="";
+  csv += `DateTime,${p.dt}\r\n`;
+  csv += "Block,STT,Status,Denom,DenomHex,Confirm,ConfirmHex,PredictDenom,Width,Length,RejectLevel,RejectLevel2,RejectByLevel,RejectBySize,Thickness,Serial\r\n";
+  for(const r of p.records){
+    csv += [
+      r.block,r.stt,r.status,r.denom,r.denomHex,r.confirm,r.confirmHex,r.predictDenom,
+      r.width,r.length,r.rejectLevel,r.rejectLevel2,r.rejectByLevel,r.rejectBySize,r.thickness,r.serial
+    ].join(",") + "\r\n";
+  }
+  csv += "Summary\r\n";
+  csv += `Total Bills,${p.stats.total}\r\n`;
+  csv += `Accept Bills,${p.stats.accept}\r\n`;
+  csv += `Reject Bills,${p.stats.reject}\r\n`;
+  csv += `Predict Bills,${p.stats.predict}\r\n`;
+  csv += `Unknown Bills,${p.stats.unknown}\r\n`;
+  csv += `Sum Accept,${p.stats.acceptAmount}\r\n`;
+  csv += `Sum Reject,${p.stats.rejectAmount}\r\n`;
+  csv += `Sum Predict,${p.stats.predictAmount}\r\n`;
+  csv += `Sum All Accept+Reject+Predict,${p.stats.allAmount}\r\n`;
+  for(const d of KNOWN_DENOMS){
+    csv += `${d} Accept,${p.stats.denom[d].accept}\r\n`;
+    csv += `${d} Reject,${p.stats.denom[d].reject}\r\n`;
+    csv += `${d} Predict,${p.stats.denom[d].predict}\r\n`;
+  }
+  csv += `Unknown,${p.stats.unknown}\r\n\r\n`;
+  return csv;
+}
+
+function renderBlock(p){
+  return `<div class="panel">
+    <div class="block-head">
+      <h2>Block ${p.blockIndex} - DateTime ${p.dt}</h2>
+      <span class="badge info">${p.records.length} records</span>
+    </div>
+    <div class="cards">
+      ${makeCard("total","Total Bills",p.stats.total)}
+      ${makeCard("accept","Accept Bills",p.stats.accept)}
+      ${makeCard("reject","Reject Bills",p.stats.reject)}
+      ${makeCard("predict","Predict Bills",p.stats.predict)}
+      ${makeCard("unknown","Unknown Bills",p.stats.unknown)}
+      ${makeCard("amount","Sum Accept",money(p.stats.acceptAmount))}
+      ${makeCard("extra","Sum All",money(p.stats.allAmount))}
+    </div>
+    <div class="denom-grid">${denomBoxes(p.stats)}</div>
+    <h3>Bill Records</h3>
+    <div class="table-wrap">
+      <table class="record-table">
+        <thead>
+          <tr>
+            <th>Block</th>
+            <th>DateTime</th>
+            <th>STT</th>
+            <th>Status</th>
+            <th>Denom</th>
+            <th>Confirm</th>
+            <th>PredictDenom</th>
+            <th>Width</th>
+            <th>Length</th>
+            <th>RejectLevel</th>
+            <th>RejectLevel2</th>
+            <th>RejectByLevel</th>
+            <th>RejectBySize</th>
+            <th>Thickness</th>
+            <th>Serial</th>
+          </tr>
+        </thead>
+        <tbody>${p.records.map(recordRow).join("")}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function renderOverall(parsedBlocks){
+  const s=emptyStats();
+  for(const p of parsedBlocks) addStats(s,p.stats);
+
+  document.getElementById("overall").innerHTML = `<div class="panel">
+    <div class="block-head">
+      <h2>Overall Summary</h2>
+      <span class="badge info">${parsedBlocks.length} blocks</span>
+    </div>
+    <div class="cards">
+      ${makeCard("total","Total Bills",s.total)}
+      ${makeCard("accept","Accept Bills",s.accept)}
+      ${makeCard("reject","Reject Bills",s.reject)}
+      ${makeCard("predict","Predict Bills",s.predict)}
+      ${makeCard("unknown","Unknown Bills",s.unknown)}
+      ${makeCard("amount","Sum Accept",money(s.acceptAmount))}
+      ${makeCard("extra","Sum All",money(s.allAmount))}
+    </div>
+    <div class="denom-grid">${denomBoxes(s)}</div>
+  </div>`;
+}
+
+function applyFilters(){
+  const q=document.getElementById("filterText").value.trim().toLowerCase();
+  const status=document.getElementById("filterStatus").value;
+  const denom=document.getElementById("filterDenom").value;
+  const rows=document.querySelectorAll(".record-table tbody tr");
+  let visible=0;
+
+  rows.forEach(tr=>{
+    const text=tr.dataset.search || "";
+    const st=tr.dataset.status || "";
+    const de=tr.dataset.denom || "";
+    const pd=tr.dataset.predict || "";
+
+    let ok=true;
+    if(q && !text.includes(q)) ok=false;
+    if(status && st!==status) ok=false;
+    if(denom){
+      if(denom==="Unknown"){
+        if(st!=="UNKNOWN") ok=false;
+      }else{
+        if(de!==denom && pd!==denom) ok=false;
+      }
+    }
+
+    tr.classList.toggle("hidden",!ok);
+    if(ok) visible++;
+  });
+
+  document.getElementById("visibleCount").textContent = visible + " records";
+}
+
+function sortTable(table, col){
+  const tbody=table.querySelector("tbody");
+  const rows=Array.from(tbody.querySelectorAll("tr"));
+  const asc=table.dataset.sortCol == col && table.dataset.sortDir !== "asc" ? true : !(table.dataset.sortCol == col);
+  rows.sort((a,b)=>{
+    let av=a.children[col].textContent.trim();
+    let bv=b.children[col].textContent.trim();
+    const an=Number(av.replace(/,/g,""));
+    const bn=Number(bv.replace(/,/g,""));
+    if(!Number.isNaN(an) && !Number.isNaN(bn)) return asc ? an-bn : bn-an;
+    return asc ? av.localeCompare(bv) : bv.localeCompare(av);
+  });
+  tbody.append(...rows);
+  table.dataset.sortCol=col;
+  table.dataset.sortDir=asc?"asc":"desc";
+  applyFilters();
+}
+
+
+function makeDownloadLink(id,label,blob,filename){
+  const box=document.getElementById("downloadLinks");
+  let old=document.getElementById(id);
+  if(old) old.remove();
+  const a=document.createElement("a");
+  a.id=id;
+  a.textContent=label;
+  a.href=URL.createObjectURL(blob);
+  a.download=filename;
+  a.style.cssText="display:inline-block;background:#0f766e;color:white;text-decoration:none;padding:9px 12px;border-radius:8px;font-weight:700";
+  box.appendChild(a);
+  return a;
+}
+
+function clearDownloadLinks(){
+  const box=document.getElementById("downloadLinks");
+  if(box) box.innerHTML="";
+}
+
+function populateMergeSelector(parsedBlocks){
+  const s=document.getElementById("mergeBlocks");
+  s.innerHTML="";
+  parsedBlocks.forEach(p=>{
+    const opt=document.createElement("option");
+    opt.value=String(p.blockIndex);
+    opt.textContent="Block " + p.blockIndex + " - " + p.dt + " (" + p.stats.total + " bills)";
+    s.appendChild(opt);
+  });
+  document.getElementById("mergePanel").style.display = parsedBlocks.length ? "block" : "none";
+}
+
+function selectedMergeBlocks(){
+  return Array.from(document.getElementById("mergeBlocks").selectedOptions).map(o=>o.value);
+}
+
+function getBlockByIndex(idx){
+  return lastParsedBlocks.find(x=>String(x.blockIndex)===String(idx));
+}
+
+function getRawBlockByIndex(idx){
+  const found=lastRawBlocks.find(x=>String(x.blockIndex)===String(idx));
+  return found ? found.bytes : null;
+}
+
+function renderMergedSummary(){
+  const vals=selectedMergeBlocks();
+  if(!vals.length){
+    alert("Chọn ít nhất 1 block để gộp");
+    return;
+  }
+
+  const stats=emptyStats();
+  const selected=[];
+  const records=[];
+  const bytes=[];
+
+  vals.forEach(v=>{
+    const p=getBlockByIndex(v);
+    const raw=getRawBlockByIndex(v);
+    if(p){
+      addStats(stats,p.stats);
+      selected.push("Block " + p.blockIndex + " (" + p.dt + ")");
+      records.push(...p.records);
+    }
+    if(raw){
+      for(const b of raw) bytes.push(b);
+    }
+  });
+
+  mergedSelectionBytes = new Uint8Array(bytes);
+
+  let csv="Merged Blocks," + selected.join(" + ") + "\\r\\n";
+  csv+="Block,DateTime,STT,Status,Denom,DenomHex,Confirm,ConfirmHex,PredictDenom,Width,Length,RejectLevel,RejectLevel2,Thickness,Serial\\r\\n";
+  records.forEach(r=>{
+    csv += [
+      r.block,r.dateTime,r.stt,r.status,r.denom,r.denomHex,r.confirm,r.confirmHex,r.predictDenom,
+      r.width,r.length,r.rejectLevel,r.rejectLevel2,r.rejectByLevel,r.rejectBySize,r.thickness,r.serial
+    ].join(",") + "\\r\\n";
+  });
+  csv+="Summary\\r\\n";
+  csv+=`Total Bills,${stats.total}\\r\\n`;
+  csv+=`Accept Bills,${stats.accept}\\r\\n`;
+  csv+=`Reject Bills,${stats.reject}\\r\\n`;
+  csv+=`Predict Bills,${stats.predict}\\r\\n`;
+  csv+=`Unknown Bills,${stats.unknown}\\r\\n`;
+  csv+=`Accept Amount,${stats.acceptAmount}\\r\\n`;
+  csv+=`Predict Amount,${stats.predictAmount}\\r\\n`;
+  for(const d of KNOWN_DENOMS){
+    csv+=`${d} Accept,${stats.denom[d].accept}\\r\\n`;
+    csv+=`${d} Reject,${stats.denom[d].reject}\\r\\n`;
+    csv+=`${d} Predict,${stats.denom[d].predict}\\r\\n`;
+  }
+  csv+=`Unknown,${stats.unknown}\\r\\n`;
+
+  mergedSelectionCsv = csv;
+
+  let denomRows="";
+  for(const d of KNOWN_DENOMS){
+    denomRows += `<tr><td>${d}</td><td>${stats.denom[d].accept}</td><td>${stats.denom[d].reject}</td><td>${stats.denom[d].predict}</td></tr>`;
+  }
+
+  document.getElementById("mergeResult").innerHTML = `
+    <div class="cards">
+      ${makeCard("total","Merged Blocks",vals.length)}
+      ${makeCard("total","Total Bills",stats.total)}
+      ${makeCard("accept","Accept Bills",stats.accept)}
+      ${makeCard("reject","Reject Bills",stats.reject)}
+      ${makeCard("predict","Predict Bills",stats.predict)}
+      ${makeCard("unknown","Unknown Bills",stats.unknown)}
+      ${makeCard("amount","Sum Accept",money(stats.acceptAmount))}
+      ${makeCard("extra","Sum All",money(stats.allAmount))}
+    </div>
+
+    <div class="table-wrap" style="max-height:420px">
+      <table>
+        <thead>
+          <tr><th>Denom</th><th>Accept</th><th>Reject</th><th>Predict</th></tr>
+        </thead>
+        <tbody>
+          ${denomRows}
+          <tr><td>Unknown</td><td colspan="3">${stats.unknown}</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="note">Merged: ${selected.join(", ")}</p>
+  `;
+
+  document.getElementById("btnDownloadMergedCsv").disabled=false;
+  document.getElementById("btnDownloadMergedBin").disabled=false;
+}
+
+function clearMerge(){
+  document.getElementById("mergeBlocks").selectedIndex=-1;
+  document.getElementById("mergeResult").innerHTML="";
+  document.getElementById("btnDownloadMergedCsv").disabled=true;
+  document.getElementById("btnDownloadMergedBin").disabled=true;
+  mergedSelectionBytes=null;
+  mergedSelectionCsv="";
+}
+
+document.getElementById("btnMergeBlocks").onclick = renderMergedSummary;
+document.getElementById("btnClearMerge").onclick = clearMerge;
+document.getElementById("btnDownloadMergedCsv").onclick = function(){
+  if(!mergedSelectionCsv) return;
+  const blob=new Blob(["\uFEFF"+mergedSelectionCsv],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="merged.csv";
+  a.click();
+};
+document.getElementById("btnDownloadMergedBin").onclick = function(){
+  if(!mergedSelectionBytes) return;
+  const blob=new Blob([mergedSelectionBytes],{type:"application/octet-stream"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="merged.bin";
+  a.click();
+};
+
+
+function sumBlockIndexes(indexes){
+  const s=emptyStats();
+  const selected=[];
+  indexes.forEach(idx=>{
+    const p=lastParsedBlocks.find(x=>String(x.blockIndex)===String(idx));
+    if(p){
+      addStats(s,p.stats);
+      selected.push(p.blockIndex + " (" + p.dt + ")");
+    }
+  });
+  return {stats:s, selected};
+}
+
+function selectedValues(selectId){
+  return Array.from(document.getElementById(selectId).selectedOptions).map(o=>o.value);
+}
+
+function populateCompareSelectors(parsedBlocks){
+  const a=document.getElementById("compareA");
+  const b=document.getElementById("compareB");
+  a.innerHTML="";
+  b.innerHTML="";
+  parsedBlocks.forEach(p=>{
+    const label="Block " + p.blockIndex + " - " + p.dt;
+    const oa=document.createElement("option");
+    oa.value=String(p.blockIndex);
+    oa.textContent=label;
+    const ob=document.createElement("option");
+    ob.value=String(p.blockIndex);
+    ob.textContent=label;
+    a.appendChild(oa);
+    b.appendChild(ob);
+  });
+  document.getElementById("comparePanel").style.display = parsedBlocks.length ? "block" : "none";
+}
+
+function diffRow(label,a,b){
+  const d=b-a;
+  const cls=d>0?"bad":(d<0?"good":"");
+  const sign=d>0?"+":"";
+  return `<tr><td>${label}</td><td>${money(a)}</td><td>${money(b)}</td><td class="${cls}">${sign}${money(d)}</td></tr>`;
+}
+
+function renderCompare(){
+  const aVals=selectedValues("compareA");
+  const bVals=selectedValues("compareB");
+  if(!aVals.length || !bVals.length){
+    alert("Chọn ít nhất 1 block cho Group A và Group B");
+    return;
+  }
+
+  const A=sumBlockIndexes(aVals);
+  const B=sumBlockIndexes(bVals);
+  const a=A.stats,b=B.stats;
+
+  let denomRows="";
+  for(const d of KNOWN_DENOMS){
+    denomRows += `<tr><th colspan="4">${d}</th></tr>`;
+    denomRows += diffRow("Accept",a.denom[d].accept,b.denom[d].accept);
+    denomRows += diffRow("Reject",a.denom[d].reject,b.denom[d].reject);
+    denomRows += diffRow("Predict",a.denom[d].predict,b.denom[d].predict);
+  }
+
+  document.getElementById("compareResult").innerHTML = `
+    <div class="cards">
+      ${makeCard("total","A Total",a.total)}
+      ${makeCard("total","B Total",b.total)}
+      ${makeCard("accept","Diff Accept", (b.accept-a.accept))}
+      ${makeCard("reject","Diff Reject", (b.reject-a.reject))}
+      ${makeCard("predict","Diff Predict", (b.predict-a.predict))}
+      ${makeCard("unknown","Diff Unknown", (b.unknown-a.unknown))}
+      ${makeCard("amount","Diff Sum Accept", money(b.acceptAmount-a.acceptAmount))}
+      ${makeCard("extra","Diff Sum All", money(b.allAmount-a.allAmount))}
+    </div>
+    <div class="table-wrap" style="max-height:520px">
+      <table>
+        <thead><tr><th>Metric</th><th>Group A</th><th>Group B</th><th>B - A</th></tr></thead>
+        <tbody>
+          <tr><th colspan="4">Groups</th></tr>
+          <tr><td>Group A</td><td colspan="3">${A.selected.join(", ")}</td></tr>
+          <tr><td>Group B</td><td colspan="3">${B.selected.join(", ")}</td></tr>
+          <tr><th colspan="4">Overall</th></tr>
+          ${diffRow("Total Bills",a.total,b.total)}
+          ${diffRow("Accept Bills",a.accept,b.accept)}
+          ${diffRow("Reject Bills",a.reject,b.reject)}
+          ${diffRow("Predict Bills",a.predict,b.predict)}
+          ${diffRow("Unknown Bills",a.unknown,b.unknown)}
+          ${diffRow("Sum Accept",a.acceptAmount,b.acceptAmount)}
+          ${diffRow("Sum Reject",a.rejectAmount,b.rejectAmount)}
+          ${diffRow("Sum Predict",a.predictAmount,b.predictAmount)}
+          ${diffRow("Sum All Accept+Reject+Predict",a.allAmount,b.allAmount)}
+          <tr><th colspan="4">Denomination Detail</th></tr>
+          ${denomRows}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function clearCompare(){
+  document.getElementById("compareA").selectedIndex = -1;
+  document.getElementById("compareB").selectedIndex = -1;
+  document.getElementById("compareResult").innerHTML = "";
+}
+
+document.getElementById("btnCompare").onclick = renderCompare;
+document.getElementById("btnClearCompare").onclick = clearCompare;
+
+
+
+function dateCodeToParts(code){
+  code=(code||"").trim();
+  if(code.length!==10) throw new Error("DateCode phải đúng 10 ký tự yymmddhhmm");
+  const yy=Number(code.slice(0,2));
+  const mo=Number(code.slice(2,4));
+  const dd=Number(code.slice(4,6));
+  const hh=Number(code.slice(6,8));
+  const mi=Number(code.slice(8,10));
+  if([yy,mo,dd,hh,mi].some(Number.isNaN)) throw new Error("DateCode phải là số dạng yymmddhhmm");
+  return {yy,mo,dd,hh,mi};
+}
+
+function partsToDateCode(p){
+  const pad=n=>String(n).padStart(2,"0");
+  return pad(p.yy)+pad(p.mo)+pad(p.dd)+pad(p.hh)+pad(p.mi);
+}
+
+function addMinutesToDateCode(code,addMin){
+  const p=dateCodeToParts(code);
+  const d=new Date(2000+p.yy, p.mo-1, p.dd, p.hh, p.mi + addMin, 0, 0);
+  return partsToDateCode({
+    yy:d.getFullYear()%100,
+    mo:d.getMonth()+1,
+    dd:d.getDate(),
+    hh:d.getHours(),
+    mi:d.getMinutes()
+  });
+}
+
+function findBlockByDateCode(arr,code){
+  const dateBytes=hexToBytes(code);
+  let offset=0;
+  while(true){
+    const s=findPattern(arr,START_PATTERN,offset);
+    if(s<0) return -1;
+    let ok=true;
+    for(let i=0;i<5;i++){
+      if(arr[s+12+i]!==dateBytes[i]){
+        ok=false;
+        break;
+      }
+    }
+    if(ok) return s;
+    offset=s+1;
+  }
+}
+
+function findNearestForwardBlock(arr,baseCode,maxMinutes){
+  const tried=[];
+  for(let add=0;add<=maxMinutes;add++){
+    const code=addMinutesToDateCode(baseCode,add);
+    tried.push(code);
+    const start=findBlockByDateCode(arr,code);
+    if(start>=0){
+      return {start,matchedCode:code,minuteOffset:add,tried};
+    }
+  }
+  return {start:-1,matchedCode:null,minuteOffset:null,tried};
+}
+
+
+document.getElementById("btnAnalyze").onclick = async function(){
+  document.getElementById("log").textContent="";
+  clearDownloadLinks();
+  document.getElementById("blocks").innerHTML="";
+  document.getElementById("overall").innerHTML="";
+  document.getElementById("visibleCount").textContent="0 records";
+  csvData="";
+  jsonData=null;
+  resultBinBytes=null;
+  allRecords=[];
+  lastParsedBlocks=[];
+  lastRawBlocks=[];
+  mergedSelectionBytes=null;
+  mergedSelectionCsv="";
+  document.getElementById("mergePanel").style.display="none";
+  document.getElementById("mergeResult").innerHTML="";
+  document.getElementById("btnDownloadMergedCsv").disabled=true;
+  document.getElementById("btnDownloadMergedBin").disabled=true;
+  document.getElementById("comparePanel").style.display="none";
+  document.getElementById("compareResult").innerHTML="";
+  
+  
+  
+
+  const f=document.getElementById("file").files[0];
+  if(!f){alert("Chọn file bv.log trước");return;}
+
+  const inputDateCode=document.getElementById("dateCode").value.trim();
+  try{ hexToBytes(inputDateCode); dateCodeToParts(inputDateCode); }
+  catch(e){alert(e.message);return;}
+
+  const blockCount=parseInt(document.getElementById("blockCount").value || "3",10);
+  const arr=new Uint8Array(await f.arrayBuffer());
+  logLine("Loaded: "+f.name+" ("+arr.length+" bytes)");
+
+  let matchStart=-1;
+  let matchedDateCode=inputDateCode;
+
+  if(document.getElementById("autoMinuteSearch").value==="on"){
+    const maxMin=parseInt(document.getElementById("maxMinuteForward").value || "30",10);
+    const found=findNearestForwardBlock(arr,inputDateCode,maxMin);
+    matchStart=found.start;
+    matchedDateCode=found.matchedCode || inputDateCode;
+
+    if(matchStart>=0){
+      logLine("Input DateCode: "+inputDateCode);
+      logLine("Matched DateCode: "+matchedDateCode+" (+"+found.minuteOffset+" phút)");
+      document.getElementById("dateCode").value=matchedDateCode;
+    }else{
+      logLine("Không tìm thấy block từ "+inputDateCode+" tới +" + maxMin + " phút.");
+      logLine("Đã thử: " + found.tried.join(", "));
+      return;
+    }
+  }else{
+    matchStart=findBlockByDateCode(arr,inputDateCode);
+    if(matchStart<0){
+      logLine("DateCode not found.");
+      return;
+    }
+    logLine("Found DateCode: "+inputDateCode);
+  }
+
+  logLine("Found block offset: "+matchStart);
+
+  let currentStart=matchStart;
+  const merged=[];
+  const parsedBlocks=[];
+  let html="";
+
+  for(let b=0;b<blockCount;b++){
+    const end=findPattern(arr,END_PATTERN,currentStart+9);
+    if(end<0){
+      logLine("End marker not found for block "+(b+1));
+      break;
+    }
+
+    const block=arr.slice(currentStart,end+9);
+    lastRawBlocks.push({blockIndex:b+1, bytes:block});
+    for(const byte of block) merged.push(byte);
+
+    const parsed=parseBlock(block,b+1);
+    parsedBlocks.push(parsed);
+    html += renderBlock(parsed);
+    csvData += csvForBlock(parsed);
+
+    logLine(`Block ${b+1}: DateTime=${parsed.dt}, Records=${parsed.stats.total}, Accept=${parsed.stats.accept}, Reject=${parsed.stats.reject}, Predict=${parsed.stats.predict}, Unknown=${parsed.stats.unknown}`);
+
+    const nextStart=findPattern(arr,START_PATTERN,end+9);
+    if(nextStart<0) break;
+    currentStart=nextStart;
+  }
+
+  resultBinBytes=new Uint8Array(merged);
+  jsonData={
+    sourceFile:f.name,
+    dateCode:document.getElementById("dateCode").value.trim(),
+    blocks:parsedBlocks
+  };
+
+  document.getElementById("blocks").innerHTML=html;
+  renderOverall(parsedBlocks);
+  lastParsedBlocks = parsedBlocks;
+  populateMergeSelector(parsedBlocks);
+  populateCompareSelectors(parsedBlocks);
+
+  document.querySelectorAll(".record-table").forEach(table=>{
+    table.querySelectorAll("th").forEach((th,i)=>{
+      th.addEventListener("click",()=>sortTable(table,i));
+    });
+  });
+
+  
+  
+  
+
+  applyFilters();
+
+  makeDownloadLink("linkBin","Tải result.bin",new Blob([resultBinBytes],{type:"application/octet-stream"}),"result.bin");
+  makeDownloadLink("linkCsv","Tải result.csv",new Blob(["\uFEFF" + csvData],{type:"text/csv;charset=utf-8"}),"result.csv");
+  makeDownloadLink("linkJson","Tải result.json",new Blob([JSON.stringify(jsonData,null,2)],{type:"application/json;charset=utf-8"}),"result.json");
+
+  logLine("Done. Trên iOS hãy bấm link tải thủ công bên trên.");
+};
+
+
+
+
+
+
+
+document.getElementById("filterText").addEventListener("input",applyFilters);
+document.getElementById("filterStatus").addEventListener("change",applyFilters);
+document.getElementById("filterDenom").addEventListener("change",applyFilters);
+document.getElementById("btnClear").onclick=function(){
+  document.getElementById("filterText").value="";
+  document.getElementById("filterStatus").value="";
+  document.getElementById("filterDenom").value="";
+  applyFilters();
+};
+
+
+const backToTopButton = document.getElementById("backToTop");
+
+window.addEventListener("scroll", function(){
+  if(window.scrollY > 450){
+    backToTopButton.classList.add("show");
+  }else{
+    backToTopButton.classList.remove("show");
+  }
+});
+
+backToTopButton.addEventListener("click", function(){
+  window.scrollTo({top:0, behavior:"smooth"});
+});
+
+</script>
+</body>
+</html>
