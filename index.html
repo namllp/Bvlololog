@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BV Log Analyzer - Part 11.4.1.1.1</title>
+<title>BV Log Analyzer</title>
 <style>
 :root{
   --bg:#0f172a;
@@ -209,8 +209,8 @@ pre{
 </head>
 <body>
 <header>
-  <h1>BV Log Analyzer - Part 11.4.1.1.1</h1>
-  <small>Offline HTML • result.bin • result.csv • Summary • PredictDenom • RejectLevel2</small>
+  <h1>BV Log Analyzer</h1>
+  <small>DNS</small>
 </header>
 
 <div class="wrap">
@@ -240,7 +240,7 @@ pre{
     <p class="note">
       Rule: Denom chính hợp lệ 500000/200000/100000/50000 → Accept/Reject theo RejectLevel.
       Denom chính không hợp lệ nhưng DenomConfirm hợp lệ → Predict. Còn lại → Unknown.
-      RejectLevel2 lấy từ byte 17. Reject theo các cặp RejectLevel/RejectLevel2 cố định hoặc theo kích thước: 500000 W 63-66/L 149-151; 200000 W 63-66/L 145-147; 100000 W 63-66/L 140-143; 50000 W 63-65/L 137-139. Chỉ cần Width hoặc Length ngoài dải là REJECT.
+      RejectLevel/RejectLevel2
     </p>
   </div>
 
@@ -1233,7 +1233,7 @@ document.getElementById("btnAnalyze").onclick = async function(){
   makeDownloadLink("linkCsv","Tải result.csv",new Blob(["\uFEFF" + csvData],{type:"text/csv;charset=utf-8"}),"result.csv");
   makeDownloadLink("linkJson","Tải result.json",new Blob([JSON.stringify(jsonData,null,2)],{type:"application/json;charset=utf-8"}),"result.json");
 
-  logLine("Done. Trên iOS hãy bấm link tải thủ công bên trên.");
+  logLine("Done.");
 };
 
 
