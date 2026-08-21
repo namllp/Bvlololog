@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BV Log Analyzer</title>
+<title>BV Log Analyzer 11.6</title>
 <style>
 :root{
   --bg:#0f172a;
@@ -205,11 +205,25 @@ pre{
 #backToTop:hover{filter:brightness(1.15);transform:translateY(-1px)}
 #backToTop.show{display:flex}
 
+
+  .collapse-toggle{
+    min-width:auto;
+    padding:7px 11px;
+    font-size:13px;
+    line-height:1;
+    background:#e8eef8;
+    color:#243447;
+    border:1px solid #cbd5e1;
+  }
+  .collapse-toggle:hover{background:#dfe8f4}
+  .collapse-body{display:none}
+  .collapse-body.open{display:block}
+
 </style>
 </head>
 <body>
 <header>
-  <h1>BV Log Analyzer</h1>
+  <h1>BV Log Analyzer Part 11.6</h1>
   <small>DNS</small>
 </header>
 
@@ -220,7 +234,7 @@ pre{
         <input type="file" id="file">
       </label>
       <label>DateCode Hex (yymmddhhmm)
-        <input id="dateCode" value="2608181010" maxlength="10">
+        <input id="dateCode" value="2608151050" maxlength="10">
       </label>
       <label>Auto tăng phút
         <select id="autoMinuteSearch">
@@ -229,7 +243,7 @@ pre{
         </select>
       </label>
       <label>Max phút tăng
-        <input id="maxMinuteForward" type="number" value="5" min="0" max="1440">
+        <input id="maxMinuteForward" type="number" value="10" min="0" max="1440">
       </label>
       <label>Số block lấy
         <input id="blockCount" type="number" value="5" min="1" max="50">
@@ -238,9 +252,8 @@ pre{
     </div>
     <div id="downloadLinks" style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap"></div>
     <p class="note">
-      Rule: Denom chính hợp lệ 500000/200000/100000/50000 → Accept/Reject theo RejectLevel.
+      Denom chính hợp lệ 500000/200000/100000/50000 → Accept/Reject theo RejectLevel.
       Denom chính không hợp lệ nhưng DenomConfirm hợp lệ → Predict. Còn lại → Unknown.
-      RejectLevel/RejectLevel2
     </p>
   </div>
 
@@ -281,36 +294,46 @@ pre{
   <div class="panel" id="mergePanel" style="display:none">
     <div class="block-head">
       <h2>Merge Blocks</h2>
-      <span class="badge info">Gộp 1 hoặc nhiều block đã extract</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="badge info">Gộp 1 hoặc nhiều block đã extract</span>
+        <button type="button" class="collapse-toggle" id="btnToggleMerge">▼ Mở</button>
+      </div>
     </div>
-    <div class="row">
-      <label>Chọn block cần gộp
-        <select id="mergeBlocks" multiple size="6" style="min-width:260px"></select>
-      </label>
-      <button id="btnMergeBlocks">Merge Selected Blocks</button>
-      <button id="btnDownloadMergedCsv" class="btn-green" disabled>Download merged.csv</button>
-      <button id="btnDownloadMergedBin" class="btn-cyan" disabled>Download merged.bin</button>
-      <button id="btnClearMerge">Clear Merge</button>
+    <div id="mergeBody" class="collapse-body">
+      <div class="row">
+        <label>Chọn block cần gộp
+          <select id="mergeBlocks" multiple size="6" style="min-width:260px"></select>
+        </label>
+        <button id="btnMergeBlocks">Merge Selected Blocks</button>
+        <button id="btnDownloadMergedCsv" class="btn-green" disabled>Download merged.csv</button>
+        <button id="btnDownloadMergedBin" class="btn-cyan" disabled>Download merged.bin</button>
+        <button id="btnClearMerge">Clear Merge</button>
+      </div>
+      <div id="mergeResult" style="margin-top:14px"></div>
     </div>
-    <div id="mergeResult" style="margin-top:14px"></div>
   </div>
 
   <div class="panel" id="comparePanel" style="display:none">
     <div class="block-head">
       <h2>Compare Blocks</h2>
-      <span class="badge info">Chọn nhiều block bằng Ctrl/Command hoặc kéo chọn</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="badge info">Chọn nhiều block bằng Ctrl/Command hoặc kéo chọn</span>
+        <button type="button" class="collapse-toggle" id="btnToggleCompare">▼ Mở</button>
+      </div>
     </div>
-    <div class="row">
-      <label>Group A Blocks
-        <select id="compareA" multiple size="6" style="min-width:220px"></select>
-      </label>
-      <label>Group B Blocks
-        <select id="compareB" multiple size="6" style="min-width:220px"></select>
-      </label>
-      <button id="btnCompare">Compare</button>
-      <button id="btnClearCompare">Clear Compare</button>
+    <div id="compareBody" class="collapse-body">
+      <div class="row">
+        <label>Group A Blocks
+          <select id="compareA" multiple size="6" style="min-width:220px"></select>
+        </label>
+        <label>Group B Blocks
+          <select id="compareB" multiple size="6" style="min-width:220px"></select>
+        </label>
+        <button id="btnCompare">Compare</button>
+        <button id="btnClearCompare">Clear Compare</button>
+      </div>
+      <div id="compareResult" style="margin-top:14px"></div>
     </div>
-    <div id="compareResult" style="margin-top:14px"></div>
   </div>
 
   <div id="blocks"></div>
@@ -392,18 +415,19 @@ function decodeSerial(rec){
 function isKnownDenom(d){
   return KNOWN_DENOMS.includes(d);
 }
-/////////////////////////////////
-  ///////////////////////////////
-  ////////////////////////////
-  //////////////////////////
-  ///////////////////////
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////
 const REJECT_RULES = [
   // 500000
   {denom:"500000", r1:100, r2:36},
   {denom:"500000", r1:5,   r2:197},
   {denom:"500000", r1:80,  r2:255},
   {denom:"500000", r1:162, r2:98},
-  {denom:"500000", r1:87,  r2:255},
+  //{denom:"500000", r1:87,  r2:255},VN0013
+  {denom:"500000", r1:255,  r2:191},//VN0019
 
   // 200000
   {denom:"200000", r1:101, r2:255},
@@ -437,12 +461,15 @@ const REJECT_RULES = [
 ];
 
 const DENOM_SIZE_RULES = {
-  "500000": { widths:[62,63,64,65,66],    lengths:[148,149,150,151] },
+  "500000": { widths:[62,63,64,65,66],    lengths:[148,149,150,151,152] },
   "200000": { widths:[61,62,63,64,65,66],    lengths:[145,146,147,148] },
   "100000": { widths:[61,62,63,64,65,66], lengths:[140,141,142,143,144] },
   "50000":  { widths:[61,62,63,64,65],    lengths:[137,138,139] }
 };
-
+  ////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////
 function isRejectBySize(denom,width,length){
   const rule = DENOM_SIZE_RULES[denom];
   if(!rule) return false;
@@ -508,6 +535,21 @@ function parseBlock(block,blockIndex){
     dt += block[i].toString(16).padStart(2,"0").toUpperCase();
   }
 
+  const procCode = block[11] ?? 0;
+  const procName =
+    procCode === 0x02 ? "IV" :
+    procCode === 0x04 ? "WC" :
+    procCode === 0x0C ? "RJ" :
+    ("PROC " + procCode.toString(16).padStart(2,"0").toUpperCase());
+
+  let templateVersion="";
+  for(let i=18;i<=37 && i<block.length;i++){
+    const c=block[i];
+    if(c>=32 && c<=126) templateVersion += String.fromCharCode(c);
+  }
+  const bvMatch = templateVersion.match(/VN\d{4}/i);
+  const bvVersion = bvMatch ? bvMatch[0].toUpperCase() : "VN----";
+
   const stats=emptyStats();
   const records=[];
 
@@ -530,7 +572,6 @@ function parseBlock(block,blockIndex){
     const length=r[13];
     const rejectLevel=r[15];
     const rejectLevel2=r[17];
-    const thickness=r[18];
     const serial=decodeSerial(r);
 
     let status="UNKNOWN";
@@ -582,7 +623,6 @@ function parseBlock(block,blockIndex){
       rejectLevel2,
       rejectByLevel: isKnownDenom(denom) ? isRejectByRule(denom,rejectLevel,rejectLevel2) : false,
       rejectBySize: isKnownDenom(denom) ? isRejectBySize(denom,width,length) : false,
-      thickness,
       serial
     };
 
@@ -590,7 +630,7 @@ function parseBlock(block,blockIndex){
     allRecords.push(rec);
   }
 
-  return {blockIndex,dt,records,stats};
+  return {blockIndex,dt,procCode,procName,templateVersion,bvVersion,records,stats};
 }
 
 function denomBoxes(stats){
@@ -632,7 +672,6 @@ function recordRow(r){
       <td>${r.rejectLevel2}</td>
       <td>${r.rejectByLevel ? 'YES' : ''}</td>
       <td>${r.rejectBySize ? 'YES' : ''}</td>
-      <td>${r.thickness}</td>
       <td>${r.serial}</td>
     </tr>`;
 }
@@ -640,11 +679,11 @@ function recordRow(r){
 function csvForBlock(p){
   let csv="";
   csv += `DateTime,${p.dt}\r\n`;
-  csv += "Block,STT,Status,Denom,DenomHex,Confirm,ConfirmHex,PredictDenom,Width,Length,RejectLevel,RejectLevel2,RejectByLevel,RejectBySize,Thickness,Serial\r\n";
+  csv += "Block,STT,Status,Denom,DenomHex,Confirm,ConfirmHex,PredictDenom,Width,Length,RejectLevel,RejectLevel2,RejectByLevel,RejectBySize,Serial\r\n";
   for(const r of p.records){
     csv += [
       r.block,r.stt,r.status,r.denom,r.denomHex,r.confirm,r.confirmHex,r.predictDenom,
-      r.width,r.length,r.rejectLevel,r.rejectLevel2,r.rejectByLevel,r.rejectBySize,r.thickness,r.serial
+      r.width,r.length,r.rejectLevel,r.rejectLevel2,r.rejectByLevel,r.rejectBySize,r.serial
     ].join(",") + "\r\n";
   }
   csv += "Summary\r\n";
@@ -669,7 +708,7 @@ function csvForBlock(p){
 function renderBlock(p){
   return `<div class="panel">
     <div class="block-head">
-      <h2>Block ${p.blockIndex} - DateTime ${p.dt}</h2>
+      <h2>Block ${p.blockIndex} - ${p.dt} - ${p.procName} - ${p.bvVersion}</h2>
       <span class="badge info">${p.records.length} records</span>
     </div>
     <div class="cards">
@@ -700,7 +739,6 @@ function renderBlock(p){
             <th>RejectLevel2</th>
             <th>RejectByLevel</th>
             <th>RejectBySize</th>
-            <th>Thickness</th>
             <th>Serial</th>
           </tr>
         </thead>
@@ -811,6 +849,7 @@ function populateMergeSelector(parsedBlocks){
     s.appendChild(opt);
   });
   document.getElementById("mergePanel").style.display = parsedBlocks.length ? "block" : "none";
+  setCollapse("mergeBody","btnToggleMerge",false);
 }
 
 function selectedMergeBlocks(){
@@ -854,11 +893,11 @@ function renderMergedSummary(){
   mergedSelectionBytes = new Uint8Array(bytes);
 
   let csv="Merged Blocks," + selected.join(" + ") + "\\r\\n";
-  csv+="Block,DateTime,STT,Status,Denom,DenomHex,Confirm,ConfirmHex,PredictDenom,Width,Length,RejectLevel,RejectLevel2,Thickness,Serial\\r\\n";
+  csv+="Block,DateTime,STT,Status,Denom,DenomHex,Confirm,ConfirmHex,PredictDenom,Width,Length,RejectLevel,RejectLevel2,RejectByLevel,RejectBySize,Serial\\r\\n";
   records.forEach(r=>{
     csv += [
       r.block,r.dateTime,r.stt,r.status,r.denom,r.denomHex,r.confirm,r.confirmHex,r.predictDenom,
-      r.width,r.length,r.rejectLevel,r.rejectLevel2,r.rejectByLevel,r.rejectBySize,r.thickness,r.serial
+      r.width,r.length,r.rejectLevel,r.rejectLevel2,r.rejectByLevel,r.rejectBySize,r.serial
     ].join(",") + "\\r\\n";
   });
   csv+="Summary\\r\\n";
@@ -923,6 +962,21 @@ function clearMerge(){
   mergedSelectionCsv="";
 }
 
+
+function setCollapse(bodyId,buttonId,open){
+  const body=document.getElementById(bodyId);
+  const btn=document.getElementById(buttonId);
+  if(!body || !btn) return;
+  body.classList.toggle("open",!!open);
+  btn.textContent = open ? "▲ Thu gọn" : "▼ Mở";
+}
+function toggleCollapse(bodyId,buttonId){
+  const body=document.getElementById(bodyId);
+  setCollapse(bodyId,buttonId,!body.classList.contains("open"));
+}
+document.getElementById("btnToggleMerge").onclick = ()=>toggleCollapse("mergeBody","btnToggleMerge");
+document.getElementById("btnToggleCompare").onclick = ()=>toggleCollapse("compareBody","btnToggleCompare");
+
 document.getElementById("btnMergeBlocks").onclick = renderMergedSummary;
 document.getElementById("btnClearMerge").onclick = clearMerge;
 document.getElementById("btnDownloadMergedCsv").onclick = function(){
@@ -977,6 +1031,7 @@ function populateCompareSelectors(parsedBlocks){
     b.appendChild(ob);
   });
   document.getElementById("comparePanel").style.display = parsedBlocks.length ? "block" : "none";
+  setCollapse("compareBody","btnToggleCompare",false);
 }
 
 function diffRow(label,a,b){
@@ -1234,7 +1289,7 @@ document.getElementById("btnAnalyze").onclick = async function(){
   makeDownloadLink("linkCsv","Tải result.csv",new Blob(["\uFEFF" + csvData],{type:"text/csv;charset=utf-8"}),"result.csv");
   makeDownloadLink("linkJson","Tải result.json",new Blob([JSON.stringify(jsonData,null,2)],{type:"application/json;charset=utf-8"}),"result.json");
 
-  logLine("Done.");
+  logLine("Done. Trên iOS hãy bấm link tải thủ công bên trên.");
 };
 
 
