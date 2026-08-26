@@ -143,6 +143,8 @@ tr.accept-row{background:rgba(22,163,74,.12)}
 tr.reject-row{background:rgba(220,38,38,.16)}
 tr.unknown-row{background:rgba(217,119,6,.18)}
 tr.predict-row{background:rgba(124,58,237,.18)}
+tr.switch-row{background:rgba(8,145,178,.18)}
+.badge.switch-cassette{background:#164e63;color:#cffafe}
 tr.hidden{display:none}
 tr:hover{outline:2px solid #60a5fa55}
 .denom-grid{
@@ -232,7 +234,7 @@ pre{
         <input type="file" id="file">
       </label>
       <label>DateCode Hex (yymmddhhmm)
-        <input id="dateCode" value="2607171020" maxlength="10">
+        <input id="dateCode" value="2602271613" maxlength="10">
       </label>
       <label>Auto tăng phút
         <select id="autoMinuteSearch">
@@ -244,7 +246,7 @@ pre{
         <input id="maxMinuteForward" type="number" value="30" min="0" max="1440">
       </label>
       <label>Số block lấy
-        <input id="blockCount" type="number" value="5" min="1" max="50">
+        <input id="blockCount" type="number" value="3" min="1" max="50">
       </label>
       <button id="btnAnalyze">Extract & Analyze</button>
     </div>
@@ -269,6 +271,7 @@ pre{
           <option value="REJECT">REJECT</option>
           <option value="PREDICT">PREDICT</option>
           <option value="UNKNOWN">UNKNOWN</option>
+          <option value="switch cassette">switch cassette</option>
         </select>
       </label>
       <label>Denom / PredictDenom
@@ -391,6 +394,23 @@ function findPattern(buf,pat,offset){
   return -1;
 }
 
+function isPatternAt(buf,pat,pos){
+  if(pos<0 || pos+pat.length>buf.length) return false;
+  for(let i=0;i<pat.length;i++){
+    if(buf[pos+i]!==pat[i]) return false;
+  }
+  return true;
+}
+
+// END marker của SRUBVLog chỉ được công nhận ở ĐẦU RECORD 64-byte.
+// Tránh cắt block nhầm khi 00 00 00 00 00 00 00 00 5F xuất hiện trong payload.
+function findAlignedEndMarker(buf,blockStart){
+  for(let pos=blockStart+64; pos+8<buf.length; pos+=64){
+    if(isPatternAt(buf,END_PATTERN,pos)) return pos;
+  }
+  return -1;
+}
+
 function denomFromBytes(a,b){
   const key=((a<<8)|b).toString(16).toUpperCase().padStart(4,"0");
   return DENOM_MAP[key] || key;
@@ -456,10 +476,10 @@ function buildErrorMeaning(denomHex, primaryIsDenom, confirmHex, confirmIsDenom,
 }
 
 const DENOM_SIZE_RULES = {
-  "500000": { widths:[62,63,64,65,66],    lengths:[148,149,150,151,152] },
+  "500000": { widths:[61,62,63,64,65,66],    lengths:[148,149,150,151,152] },
   "200000": { widths:[61,62,63,64,65,66],    lengths:[145,146,147,148] },
-  "100000": { widths:[61,62,63,64,65,66], lengths:[140,141,142,143,144] },
-  "50000":  { widths:[61,62,63,64,65],    lengths:[137,138,139,140] }
+  "100000": { widths:[61,62,63,64,65,66],    lengths:[140,141,142,143,144] },
+  "50000":  { widths:[61,62,63,64,65],       lengths:[137,138,139,140] }
 };
 
 function isRejectBySize(denom,width,length){
@@ -585,8 +605,10 @@ const ERROR_CODE_MEANINGS = {
   
   "12E5": "SOIL – accept",
   "12D3": "TAPE – accept",
+  "12D1": "TAPE – accept",
   "12F7": "TAPE – accept",
   "12F5": "TAPE – accept",
+  
   
   "16D3": "SOIL – accept",
   "16B9": "TAPE – accept",
@@ -746,6 +768,43 @@ function parseBlock(block,blockIndex){
     if(isEnd && block[off+8]===95) break;
 
     const r=block.slice(off,off+64);
+
+    // Special SRUBVLog event: byte 8..11 = 4F 06 00 00 => switch cassette.
+    // Đây không phải bill record: vẫn hiển thị trong Record Table nhưng không cộng stats/SUM.
+    const isSwitchCassette = r[8]===0x4F && r[10]===0x00 && r[11]===0x00;
+    if(isSwitchCassette){
+      const rec={
+        specialType:"switchCassette",
+        rawOffset:off,
+        sourceBlock:blockIndex,
+        block:"",
+        dateTime:"",
+        stt:"",
+        status:"switch cassette",
+        denom:"",
+        denomHex:"",
+        denomMeaning:"",
+        primaryIsDenom:false,
+        confirm:"",
+        confirmHex:"",
+        predictDenom:"",
+        width:"",
+        length:"",
+        rejectCode:"",
+        errorCodeMeaning:"",
+        errorMeaning:"",
+        rejectByErrorCode:false,
+        rejectBySize:false,
+        rejectByDenomCode:false,
+        rejectByCode:false,
+        serial:"",
+        switchSignature:"4F"+hex2(r[9])+"0000"
+      };
+      records.push(rec);
+      allRecords.push(rec);
+      continue;
+    }
+
     const stt=r[21];
     if(!stt) continue;
 
@@ -804,6 +863,7 @@ function parseBlock(block,blockIndex){
     }
 
     const rec={
+      rawOffset:off,
       block:blockIndex,
       dateTime:dt,
       stt,
@@ -831,6 +891,60 @@ function parseBlock(block,blockIndex){
     allRecords.push(rec);
   }
 
+  // Robust scan: tìm TẤT CẢ switch cassette trong toàn block,
+  // không phụ thuộc record có nằm đúng chu kỳ off += 64 hay không.
+  // Điều kiện event: byte +8 = 4F, byte +10..+11 = 00 00 (byte +9 là cassette/event code, ví dụ 06 hoặc 08).
+  const existingSwitchOffsets = new Set(
+    records
+      .filter(x=>x.specialType==="switchCassette" && Number.isInteger(x.rawOffset))
+      .map(x=>x.rawOffset)
+  );
+
+  for(let start=64; start+63<block.length; start++){
+    if(
+      block[start+8]===0x4F &&
+      block[start+10]===0x00 &&
+      block[start+11]===0x00
+    ){
+      if(existingSwitchOffsets.has(start)) continue;
+
+      const rec={
+        specialType:"switchCassette",
+        rawOffset:start,
+        sourceBlock:blockIndex,
+        block:"",
+        dateTime:"",
+        stt:"",
+        status:"switch cassette",
+        denom:"",
+        denomHex:"",
+        denomMeaning:"",
+        primaryIsDenom:false,
+        confirm:"",
+        confirmHex:"",
+        predictDenom:"",
+        width:"",
+        length:"",
+        rejectCode:"",
+        errorCodeMeaning:"",
+        errorMeaning:"",
+        rejectByErrorCode:false,
+        rejectBySize:false,
+        rejectByDenomCode:false,
+        rejectByCode:false,
+        serial:"",
+        switchSignature:"4F"+hex2(block[start+9])+"0000"
+      };
+
+      records.push(rec);
+      allRecords.push(rec);
+      existingSwitchOffsets.add(start);
+    }
+  }
+
+  // Giữ đúng thứ tự xuất hiện thực tế trong block.
+  records.sort((a,b)=>(a.rawOffset??Number.MAX_SAFE_INTEGER)-(b.rawOffset??Number.MAX_SAFE_INTEGER));
+
   return {blockIndex,dt,procCode,procName,templateVersion,bvVersion,records,stats};
 }
 
@@ -852,6 +966,25 @@ function denomBoxes(stats){
 }
 
 function recordRow(r){
+  if(r.specialType==="switchCassette"){
+    return `<tr class="switch-row"
+      data-status="switch cassette"
+      data-denom=""
+      data-predict=""
+      data-search="switch cassette ${String(r.switchSignature||"").toLowerCase()}">
+        <td></td>
+        <td></td>
+        <td><span class="badge switch-cassette">switch cassette</span></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>`;
+  }
+
   const cls = r.status==="ACCEPT" ? "accept-row" :
               r.status==="REJECT" ? "reject-row" :
               r.status==="PREDICT" ? "predict-row" : "unknown-row";
@@ -861,17 +994,14 @@ function recordRow(r){
     data-predict="${r.predictDenom}"
     data-search="${String(r.stt).toLowerCase()} ${String(r.denom).toLowerCase()} ${String(r.denomHex).toLowerCase()} ${String(r.denomMeaning).toLowerCase()} ${String(r.confirm).toLowerCase()} ${String(r.predictDenom).toLowerCase()} ${String(r.rejectCode).toLowerCase()} ${String(r.errorCodeMeaning).toLowerCase()} ${String(r.errorMeaning).toLowerCase()} ${String(r.serial).toLowerCase()}">
       <td>${r.block}</td>
-      <td>${r.dateTime}</td>
       <td>${r.stt}</td>
       <td><span class="badge ${r.status}">${r.status}</span></td>
       <td>${r.confirm}</td>
-      <td>${r.predictDenom}</td>
       <td>${r.width}</td>
       <td>${r.length}</td>
       <td class="mono"><b>${r.rejectCode}</b></td>
       <td>${r.errorMeaning}</td>
       <td>${r.rejectBySize ? 'YES' : ''}</td>
-      <td>${r.rejectByCode ? 'YES' : ''}</td>
       <td>${r.serial}</td>
     </tr>`;
 }
@@ -881,6 +1011,10 @@ function csvForBlock(p){
   csv += `DateTime,${p.dt}\r\n`;
   csv += "Block,STT,Status,Confirm,ConfirmHex,PredictDenom,Width,Length,RejectCode,ErrorCodeMeaning,ErrorMeaning,RejectByErrorCode,RejectBySize,RejectByCode,Serial\r\n";
   for(const r of p.records){
+    if(r.specialType==="switchCassette"){
+      csv += ["","","switch cassette","","","","","","","","","","","",""].join(",") + "\r\n";
+      continue;
+    }
     csv += [
       r.block,r.stt,r.status,r.confirm,r.confirmHex,r.predictDenom,
       r.width,r.length,r.rejectCode,r.errorCodeMeaning,r.errorMeaning,r.rejectByErrorCode,r.rejectBySize,r.rejectByCode,r.serial
@@ -927,17 +1061,14 @@ function renderBlock(p){
         <thead>
           <tr>
             <th>Block</th>
-            <th>DateTime</th>
             <th>STT</th>
             <th>Status</th>
             <th>Confirm</th>
-            <th>PredictDenom</th>
             <th>Width</th>
             <th>Length</th>
             <th>RejectCode</th>
             <th>Error Meaning</th>
             <th>RejectBySize</th>
-            <th>RejectByCode</th>
             <th>Serial</th>
           </tr>
         </thead>
@@ -1435,13 +1566,15 @@ document.getElementById("btnAnalyze").onclick = async function(){
   let html="";
 
   for(let b=0;b<blockCount;b++){
-    const end=findPattern(arr,END_PATTERN,currentStart+9);
+    const end=findAlignedEndMarker(arr,currentStart);
     if(end<0){
-      logLine("End marker not found for block "+(b+1));
+      logLine("Aligned END marker not found for block "+(b+1));
       break;
     }
 
-    const block=arr.slice(currentStart,end+9);
+    // Giữ toàn bộ END record 64-byte trong raw block để không làm lệch cấu trúc.
+    const blockEnd=Math.min(end+64,arr.length);
+    const block=arr.slice(currentStart,blockEnd);
     lastRawBlocks.push({blockIndex:b+1, bytes:block});
     for(const byte of block) merged.push(byte);
 
@@ -1450,9 +1583,12 @@ document.getElementById("btnAnalyze").onclick = async function(){
     html += renderBlock(parsed);
     csvData += csvForBlock(parsed);
 
-    logLine(`Block ${b+1}: DateTime=${parsed.dt}, Records=${parsed.stats.total}, Accept=${parsed.stats.accept}, Reject=${parsed.stats.reject}, Predict=${parsed.stats.predict}, Unknown=${parsed.stats.unknown}`);
+    const switchEvents=parsed.records.filter(r=>r.specialType==="switchCassette");
+    const switchCount=switchEvents.length;
+    const switchOffsets=switchEvents.map(r=>"0x"+Number(r.rawOffset).toString(16).toUpperCase()).join(", ");
+    logLine(`Block ${b+1}: DateTime=${parsed.dt}, Records=${parsed.stats.total}, Accept=${parsed.stats.accept}, Reject=${parsed.stats.reject}, Predict=${parsed.stats.predict}, Unknown=${parsed.stats.unknown}, SwitchCassette=${switchCount}${switchCount ? " @ "+switchOffsets : ""}`);
 
-    const nextStart=findPattern(arr,START_PATTERN,end+9);
+    const nextStart=findPattern(arr,START_PATTERN,Math.min(end+64,arr.length));
     if(nextStart<0) break;
     currentStart=nextStart;
   }
